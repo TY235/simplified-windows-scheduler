@@ -5,110 +5,102 @@
 #include "coursework.h"
 #include "linkedlist.h"
 
-// Declare the pointers required for linked list
-struct element *pHead = NULL;
-struct element *pTail = NULL;
-struct element *pPointer = NULL; //Current pointer
+sem_t noOfJobs;
+int dAverageResponseTime = 0;
+int dAverageTurnAroundTime = 0;
 
-struct timeval oStartTime;
-struct timeval oEndTime; 
+struct linkedList {
 
-struct process * oTemp = NULL;
+    int currentBufferSize;
+    sem_t sync;
+    struct element * head;
+    struct element * tail;
 
-double avgResponseTime = 0;
-double avgTurnAroundTime = 0;
-int responseTime = 0;
-int turnAroundTime = 0;
+} buffer[MAX_PRIORITY];
+
+struct process * processJob(int iConsumerId, struct process * pProcess, struct timeval oStartTime, struct timeval oEndTime)
+{
+	int iResponseTime;
+	int iTurnAroundTime;
+	
+    if(pProcess->iPreviousBurstTime == pProcess->iInitialBurstTime && pProcess->iRemainingBurstTime > 0)
+	{
+		iResponseTime = getDifferenceInMilliSeconds(pProcess->oTimeCreated, oStartTime);	
+		dAverageResponseTime += iResponseTime;
+		printf("Consumer %d, Process Id = %d (%s), Priority = %d, Previous Burst Time = %d, Remaining Burst Time = %d, Response Time = %d\n", iConsumerId, pProcess->iProcessId, pProcess->iPriority < MAX_PRIORITY / 2	 ? "FCFS" : "RR",pProcess->iPriority, pProcess->iPreviousBurstTime, pProcess->iRemainingBurstTime, iResponseTime);
+		return pProcess;
+	} 
+    else if(pProcess->iPreviousBurstTime == pProcess->iInitialBurstTime && pProcess->iRemainingBurstTime == 0)
+	{
+		iResponseTime = getDifferenceInMilliSeconds(pProcess->oTimeCreated, oStartTime);	
+		dAverageResponseTime += iResponseTime;
+		iTurnAroundTime = getDifferenceInMilliSeconds(pProcess->oTimeCreated, oEndTime);
+		dAverageTurnAroundTime += iTurnAroundTime;
+		printf("Consumer %d, Process Id = %d (%s), Priority = %d, Previous Burst Time = %d, Remaining Burst Time = %d, Response Time = %d, Turnaround Time = %d\n", iConsumerId, pProcess->iProcessId, pProcess->iPriority < MAX_PRIORITY / 2 ? "FCFS" : "RR", pProcess->iPriority, pProcess->iPreviousBurstTime, pProcess->iRemainingBurstTime, iResponseTime, iTurnAroundTime);
+		free(pProcess);
+		return NULL;
+	} 
+    else if(pProcess->iPreviousBurstTime != pProcess->iInitialBurstTime && pProcess->iRemainingBurstTime > 0)
+	{
+		printf("Consumer %d, Process Id = %d (%s), Priority = %d, Previous Burst Time = %d, Remaining Burst Time = %d\n", iConsumerId, pProcess->iProcessId, pProcess->iPriority < MAX_PRIORITY / 2 ? "FCFS" : "RR", pProcess->iPriority, pProcess->iPreviousBurstTime, pProcess->iRemainingBurstTime);
+		return pProcess;
+	} 
+    else if(pProcess->iPreviousBurstTime != pProcess->iInitialBurstTime && pProcess->iRemainingBurstTime == 0)
+	{
+		iTurnAroundTime = getDifferenceInMilliSeconds(pProcess->oTimeCreated, oEndTime);
+		dAverageTurnAroundTime += iTurnAroundTime;
+		printf("Consumer %d, Process Id = %d (%s), Priority = %d, Previous Burst Time = %d, Remaining Burst Time = %d, Turnaround Time = %d\n", iConsumerId, pProcess->iProcessId, pProcess->iPriority < MAX_PRIORITY / 2 ? "FCFS" : "RR", pProcess->iPriority, pProcess->iPreviousBurstTime, pProcess->iRemainingBurstTime, iTurnAroundTime);
+		free(pProcess);
+		return NULL;
+	}
+}
+
+void * consumer(consumerID){
 
 
-// // Producer thread function
+
+}
+
 void * producer(){
-
-    
-    // Display and add all processes to the linked list
-	for(int i = 0; i < NUMBER_OF_JOBS; i++){
-		oTemp = generateProcess();
-		addLast(oTemp,&pHead,&pTail);
-	}	
-
-
-    while(1){
-        break;
-        // sem_wait(&empty);
-        // sem_wait(&sync);
-        
-        // sem_post(&sync);
-        // sem_post(&full);
+    for(int i; i < NUMBER_OF_JOBS; i++){
+        sem_wait(&noOfJobs);
+        struct process * oTemp = generateProcess();
+        sem_wait(&buffer[i].sync);
+        addLast(oTemp,&buffer[i].head,&buffer[i].tail);
+        printf("Producer 0, Process Id = %d (%s), Priority = %d, Initial Burst Time %d", pProcess->iProcessId, pProcess->iPriority < MAX_PRIORITY / 2 ? "FCFS" : "RR", pProcess->iPriority, pProcess->iInitialBurstTime);
+        sem_post(&buffer[i].sync);
     }
 }
 
-// Consumer threads function
-void * consumer(){
+int main(){
 
-     while(1){
-
-         
-        // Run the linked list and calculate the response time and turnaround time
-        for(int j = 0; j < NUMBER_OF_JOBS; j++){
-            runNonPreemptiveJob((struct process*)pPointer->pData, &oStartTime, &oEndTime);	
-            responseTime = getDifferenceInMilliSeconds(((struct process*)(pPointer->pData))->oTimeCreated,oStartTime);
-            turnAroundTime = getDifferenceInMilliSeconds(((struct process*)(pPointer->pData))->oTimeCreated,oEndTime);
-            avgResponseTime += responseTime;
-            avgTurnAroundTime += turnAroundTime; 
-            printf("Process Id = %d, Previous Burst Time = %d, New Burst Time = %d, Response Time = %d, Turn Around Time = %d\n",((struct process*)(pPointer->pData))->iProcessId,((struct process*)(pPointer->pData))->iInitialBurstTime,((struct process*)(pPointer->pData))->iRemainingBurstTime,responseTime,turnAroundTime);
-            pPointer = pPointer->pNext; 
-    	}
-
-         break;
-        // sem_wait(&empty);
-        // sem_wait(&sync);
-
-        // sem_post(&sync);
-        // sem_post(&full);
-    }
-}
-
-
-
-
-// void createProcess(){
-//     struct process * A[52];
-//     // printf("%d",sizeof(A)/sizeof(A[0]));
-//     for(int i = 0; i < 1; i++){
-
-//     }
-// }
-
-
-
-
-
-
-
-int main(int argc, char** argv){
-
-
-    // Initialize 2 counting semaphores and 1 binary semaphore
-    // sem_init(&full, 0, 0);		
-	// sem_init(&empty, 0, MAX_BUFFER_SIZE);
-	// sem_init(&sync, 0, 1);
-
-    pthread_t prod, cons1, cons2;
-
-    // Create 1 producer and 2 consumer threads
-    pthread_create(&prod, NULL, producer, NULL);
-	pthread_create(&cons1, NULL, consumer, NULL);
-	pthread_create(&cons2, NULL, consumer, NULL);
-
-    // Join  the threads 
-    pthread_join(prod, NULL);
-	pthread_join(cons1, NULL);
-    pthread_join(cons2, NULL);
+    int
+    sem_init(&numofJobs, 0, MAX_BUFFER_SIZE);
     
+    for(int i = 0; i < MAX_PRIORITY; i++){
+        buffer[i].currentBufferSize = 0;
+        sem_init(&buffer[i].sync,0,0);
+        buffer[i].head = NULL;
+        buffer[i].tail = NULL;
+    }
 
+    int consumerID[NUMBER_OF_CONSUMERS];
+    pthread_t producer, consumer[NUMBER_OF_CONSUMERS];
 
+    // Create the threads
+    for(int j = 0; j < NUMBER_OF_CONSUMERS; j++){
+        consumerID = j;
+        pthread_create(&consumer[j],NULL,consumer,(void *)consumerID[j]);
+    }
+    
+    pthread_create(&producer, NULL, producer, NULL);
+
+    for(int j = 0; j < NUMBER_OF_CONSUMERS; j++){
+        pthread_join(consumer[j],NULL);
+    }
+
+    pthread_join(producer,NULL);
 
     return 0;
     
 }
-
