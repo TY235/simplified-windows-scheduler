@@ -8,7 +8,7 @@
 #define TIME_SLICE 5
 
 // Number of processes to create
-#define NUMBER_OF_JOBS  100/*00*/
+#define NUMBER_OF_JOBS  1000/*00*/
 
 // Maximum duration of the individual processes, in milli seconds. Note that the times themselves will be chosen at random in ]0,100]
 #define MAX_BURST_TIME 50
@@ -16,7 +16,7 @@
 // Maximum process priority 
 #define MAX_PRIORITY 32
 
-#define MAX_BUFFER_SIZE 10
+#define MAX_BUFFER_SIZE 100
 
 #define MAX_NUMBER_OF_JOBS NUMBER_OF_JOBS
 

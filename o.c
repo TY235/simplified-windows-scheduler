@@ -124,7 +124,7 @@ void * consumer(void * id) {
 				}
 				// Go back to the highest priority level.
 				break;
-			}
+				}
 			sem_post(&buffers[i].sync);
 			
 			// Check whether all jobs have been consumed.
