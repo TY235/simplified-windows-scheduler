@@ -1,18 +1,21 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <semaphore.h>
 #include <pthread.h>
 #include "coursework.h"
 #include "linkedlist.h"
 
+
+// Declarations
 sem_t empty;
-// sem_t full;
 sem_t sync;
 
 double dAverageResponseTime = 0;
 double dAverageTurnAroundTime = 0;
 int totalJobsConsumed = 0;
 
+// Structure of the buffer
 struct linkedList {
 
     int currentBufferSize;
@@ -22,24 +25,30 @@ struct linkedList {
 
 } buffer[MAX_PRIORITY];
 
+
+// To check if a process has completed
 struct process * processJob(int iConsumerId, struct process * pProcess, struct timeval oStartTime, struct timeval oEndTime)
 {
 	int iResponseTime;
 	int iTurnAroundTime;
 	
+    // Process that has not completed in the first run
     if(pProcess->iPreviousBurstTime == pProcess->iInitialBurstTime && pProcess->iRemainingBurstTime > 0)
 	{
 		iResponseTime = getDifferenceInMilliSeconds(pProcess->oTimeCreated, oStartTime);	
+        // Enters critical section when changing the response time
         sem_wait(&sync);
 		dAverageResponseTime += iResponseTime;
         sem_post(&sync);
 		printf("Consumer %d, Process Id = %d (%s), Priority = %d, Previous Burst Time = %d, Remaining Burst Time = %d, Response Time = %d\n", iConsumerId, pProcess->iProcessId, pProcess->iPriority < MAX_PRIORITY / 2	 ? "FCFS" : "RR",pProcess->iPriority, pProcess->iPreviousBurstTime, pProcess->iRemainingBurstTime, iResponseTime);
 		return pProcess;
 	} 
+    // Process that had completed in the first run
     else if(pProcess->iPreviousBurstTime == pProcess->iInitialBurstTime && pProcess->iRemainingBurstTime == 0)
 	{
 		iResponseTime = getDifferenceInMilliSeconds(pProcess->oTimeCreated, oStartTime);	
 		iTurnAroundTime = getDifferenceInMilliSeconds(pProcess->oTimeCreated, oEndTime);
+        // Enters critical section when changing the response time and turnaroud time
         sem_wait(&sync);
 		dAverageResponseTime += iResponseTime;
 		dAverageTurnAroundTime += iTurnAroundTime;
@@ -48,14 +57,17 @@ struct process * processJob(int iConsumerId, struct process * pProcess, struct t
 		free(pProcess);
 		return NULL;
 	} 
+    // Process that has not completed in the second or above run
     else if(pProcess->iPreviousBurstTime != pProcess->iInitialBurstTime && pProcess->iRemainingBurstTime > 0)
 	{
 		printf("Consumer %d, Process Id = %d (%s), Priority = %d, Previous Burst Time = %d, Remaining Burst Time = %d\n", iConsumerId, pProcess->iProcessId, pProcess->iPriority < MAX_PRIORITY / 2 ? "FCFS" : "RR", pProcess->iPriority, pProcess->iPreviousBurstTime, pProcess->iRemainingBurstTime);
 		return pProcess;
 	} 
+    // Process that had completed in the second or above run
     else if(pProcess->iPreviousBurstTime != pProcess->iInitialBurstTime && pProcess->iRemainingBurstTime == 0)
 	{   
 		iTurnAroundTime = getDifferenceInMilliSeconds(pProcess->oTimeCreated, oEndTime);
+        // Enters critical section when changing the turnaround time
         sem_wait(&sync);
 		dAverageTurnAroundTime += iTurnAroundTime;
         sem_post(&sync);
@@ -65,162 +77,72 @@ struct process * processJob(int iConsumerId, struct process * pProcess, struct t
 	}
 }
 
+
 // Consumer function
-// void *consumer(void* consumerID){
-
-//     int consID = *((int *)consumerID); /*Typecast void pointer to integer*/
-//     struct process * pProcess;
-//     struct process * remainingProcess;
-//     while(1){
-//         for(int i = 0; i < MAX_PRIORITY; i++){
-//             // sem_wait(&full);
-//             sem_wait(&buffer[i].bufferSync);
-//             if(buffer[i].currentBufferSize == 0){
-//                 sem_post(&buffer[i].bufferSync);
-//                 break;
-//             }
-//             // Critical Section
-//             buffer[i].currentBufferSize--;
-//             pProcess = removeFirst(&buffer[i].head,&buffer[i].tail);
-//             sem_post(&buffer[i].bufferSync);
-//             // End Section
-
-//             runJob(pProcess,&oStartTime,&oEndTime);
-//             remainingProcess = processJob(consID,pProcess,oStartTime,oEndTime);
-            
-//             if(remainingProcess == NULL){
-//                 sem_wait(&sync);
-//                 totalJobsConsumed++;
-//                 sem_post(&sync);
-//                 sem_post(&empty);
-//             }
-//             else{
-//                 sem_wait(&buffer[i].bufferSync);
-//                 buffer[i].currentBufferSize++;
-//                 addLast(remainingProcess,&buffer[remainingProcess->iPriority].head,&buffer[remainingProcess->iPriority].tail);
-//                 sem_post(&buffer[i].bufferSync);
-          
-//             }
-
-//             sem_wait(&sync);
-//             if (totalJobsConsumed==MAX_NUMBER_OF_JOBS){
-//                 c = 1;    
-//                 sem_post(&sync);
-//                 break;
-//             }      
-//             sem_post(&sync);
-//         }
-      
-//         if (c==1){
-//             break;
-//         }
-//     }
-// }
-
-
-// void *consumer(void* consumerID){
-
-//     int consID = *((int *)consumerID); /*Typecast void pointer to integer*/
-//     int c = 0;
-  
-//     struct process * pProcess;
-//     struct process * remainingProcess;
-
-//     while(1){
-//         for(int i = 0; i < MAX_PRIORITY; i++){
-//             // sem_wait(&full);
-//             if(buffer[i].currentBufferSize != 0){
-//                 sem_wait(&buffer[i].bufferSync);
-//                 // Critical Section
-//                 buffer[i].currentBufferSize--;
-//                 pProcess = removeFirst(&buffer[i].head,&buffer[i].tail);
-//                 sem_post(&buffer[i].bufferSync);
-//                 // End Section
-            
-//                 struct timeval oStartTime, oEndTime; 
-//                 runJob(pProcess,&oStartTime,&oEndTime);
-//                 remainingProcess = processJob(consID,pProcess,oStartTime,oEndTime);
-                
-//                 if(remainingProcess == NULL){
-//                     sem_wait(&sync);
-//                     totalJobsConsumed++;
-//                     sem_post(&sync);
-//                     sem_post(&empty);
-//                 }
-//                 else{
-             
-//                     sem_wait(&buffer[remainingProcess->iPriority].bufferSync);
-//                     addLast(remainingProcess,&buffer[remainingProcess->iPriority].head,&buffer[remainingProcess->iPriority].tail);
-//                     buffer[remainingProcess->iPriority].currentBufferSize++;
-//                     sem_post(&buffer[remainingProcess->iPriority].bufferSync);
-            
-//                 }
-//                 // break;
-//             }
-//             // sem_post(&buffer[i].bufferSync);
-
-//             sem_wait(&sync);
-//             if (totalJobsConsumed==NUMBER_OF_JOBS){
-//                 c = 1;    
-//                 sem_post(&sync);
-//                 break;
-//             }      
-//             sem_post(&sync);
-//         }
-      
-//         if (c){
-//             break;
-//         }
-//     }
-    
-// }
-
-
 void *consumer(void* consumerID){
     
-    int consID = *((int *)consumerID); /*Typecast void pointer to integer*/
-    int c = 0;
+    // Typecast void pointer to integer
+    int consID = *((int *)consumerID);
+    // Check if all the jobs has completed
+    bool completed = false;
    
     struct process * pProcess;
     struct process * remainingProcess;
 
+    // Keeps running until all the jobs has completed
     while(1){
+        // Runs from the top priority buffer to the lowest priority buffer
         for(int i = 0; i < MAX_PRIORITY; i++){
-            if(buffer[i].currentBufferSize != 0){
-                sem_wait(&buffer[i].bufferSync);
-                buffer[i].currentBufferSize--;
-                pProcess = removeFirst(&buffer[i].head,&buffer[i].tail);
-                sem_post(&buffer[i].bufferSync);   
 
+            // Process jobs when the buffer is not empty
+            if(buffer[i].currentBufferSize != 0){
+                // Enter critical section
+                sem_wait(&buffer[i].bufferSync);
+                // Update the buffer size
+                buffer[i].currentBufferSize--;
+                // Remove the first job of the buffer 
+                pProcess = removeFirst(&buffer[i].head,&buffer[i].tail);
+                sem_post(&buffer[i].bufferSync);
+
+                // Initialize the the current time
                 struct timeval oStartTime, oEndTime;
+                // Simulate the running of the process
                 runJob(pProcess,&oStartTime,&oEndTime);
+                // Call processJob function to calculate the responseTime and turnAroundTime
                 remainingProcess = processJob(consID,pProcess,oStartTime,oEndTime);
             
+                // Update the total jobs consumed by the consumer if process has completed
                 if(remainingProcess==NULL){
+                    // Enter critical section when updating the value
                     sem_wait(&sync);
                     totalJobsConsumed++;
                     sem_post(&sync);
+                    // Update the counting semaphore
                     sem_post(&empty);
                 }
                 else{
+                    // Enter the critical section of the remainingProcess buffer
                     sem_wait(&buffer[remainingProcess->iPriority].bufferSync);
+                    // Add the incomplete job to the end of its respective buffer
                     addLast(remainingProcess,&buffer[remainingProcess->iPriority].head,&buffer[remainingProcess->iPriority].tail);
+                    // Update the buffer size after adding in the incomplete job to the list
                     buffer[remainingProcess->iPriority].currentBufferSize++;
                     sem_post(&buffer[remainingProcess->iPriority].bufferSync);
                 }
             }
-          
-            // sem_post(&buffer[i].bufferSync);
-
-            sem_wait(&sync);
+            
+            // If the all the jobs produced are consumed
             if (totalJobsConsumed==NUMBER_OF_JOBS){
-                c = 1;    
+                sem_wait(&sync);
+                // Set a flag for exiting while loop
+                completed = true;    
                 sem_post(&sync);
+                // Break from the for loop
                 break;
             }      
-            sem_post(&sync);
         }
-        if (c){
+        // Break from the while loop if everything is completed
+        if (completed){
             break;
         }
     }
@@ -233,14 +155,17 @@ void *producer(){
     // Create the number of jobs defined in coursework.h
     int i;
     while(i < NUMBER_OF_JOBS){    
-        // Use counting semaphore to avoid over-filled the linked list
+        // Use counting semaphore to avoid over-filling the buffer
         sem_wait(&empty);
+        // Generate process
         struct process * pProcess = generateProcess();
-        // Enter critical section of the respective linked list
+        // Enter critical section of the respective buffer
         sem_wait(&buffer[pProcess->iPriority].bufferSync);
+        // Add the process to the end of the respective buffer
         addLast(pProcess,&buffer[pProcess->iPriority].head,&buffer[pProcess->iPriority].tail);
+        // Update the buffer size
         buffer[pProcess->iPriority].currentBufferSize++;
-        // Leave critical section of the respective linked list
+        // Leave critical section of the respective buffer
         sem_post(&buffer[pProcess->iPriority].bufferSync);
         printf("Producer 0, Process Id = %d (%s), Priority = %d, Initial Burst Time = %d\n", pProcess->iProcessId, pProcess->iPriority < MAX_PRIORITY / 2 ? "FCFS" : "RR", pProcess->iPriority, pProcess->iInitialBurstTime);
         i++;
@@ -251,6 +176,8 @@ void *producer(){
 int main(){
 
     int i = 0;
+    // Create 32 buffers for 32 priorities
+    // Initialize the 32 buffers
     while( i < MAX_PRIORITY){
         buffer[i].currentBufferSize = 0;
         sem_init(&buffer[i].bufferSync,0,1);
@@ -259,15 +186,19 @@ int main(){
         i++;
     }
 
+    // Initiaize the semaphores
+    // 1 counting semaphore sets to the buffer size to avoid over filling the buffers 
     sem_init(&empty, 0, MAX_BUFFER_SIZE);
-    // sem_init(&full, 0, 0);
+    // 1 binary semaphores for updating values that are shared among the buffers
     sem_init(&sync, 0, 1);
 
+    // Create an array of consumers stated in the 'coursework.h' file
     int consumerID[NUMBER_OF_CONSUMERS];
+    // Create a producer thread and a numbers of consumer threads
     pthread_t prod, cons[NUMBER_OF_CONSUMERS];
 
     // Create the threads
-    // Create the number of consumer threads defined in coursework.h
+    // Create the number of consumer threads defined in 'coursework.h' file
     int j = 0;
     while(j < NUMBER_OF_CONSUMERS){
         consumerID[j] = j;
@@ -287,6 +218,8 @@ int main(){
 
     // Join the only producer thread
     pthread_join(prod,NULL);
+
+    // Calculate the average of response time and turnaround time
     dAverageResponseTime /= NUMBER_OF_JOBS;
 	dAverageTurnAroundTime /= NUMBER_OF_JOBS;
     
