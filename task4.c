@@ -94,10 +94,10 @@ void *consumer(void* consumerID){
         // Runs from the top priority buffer to the lowest priority buffer
         for(int i = 0; i < MAX_PRIORITY; i++){
 
+            // Enter critical section
+            sem_wait(&buffer[i].bufferSync);
             // Process jobs when the buffer is not empty
             if(buffer[i].currentBufferSize != 0){
-                // Enter critical section
-                sem_wait(&buffer[i].bufferSync);
                 // Update the buffer size
                 buffer[i].currentBufferSize--;
                 // Remove the first job of the buffer 
@@ -129,7 +129,9 @@ void *consumer(void* consumerID){
                     buffer[remainingProcess->iPriority].currentBufferSize++;
                     sem_post(&buffer[remainingProcess->iPriority].bufferSync);
                 }
+                break;
             }
+            sem_post(&buffer[i].bufferSync);
             
             // If the all the jobs produced are consumed
             if (totalJobsConsumed==NUMBER_OF_JOBS){
