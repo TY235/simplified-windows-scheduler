@@ -168,8 +168,8 @@ void *producer(){
         // Update the buffer size
         buffer[pProcess->iPriority].currentBufferSize++;
         // Leave critical section of the respective buffer
-        sem_post(&buffer[pProcess->iPriority].bufferSync);
         printf("Producer 0, Process Id = %d (%s), Priority = %d, Initial Burst Time = %d\n", pProcess->iProcessId, pProcess->iPriority < MAX_PRIORITY / 2 ? "FCFS" : "RR", pProcess->iPriority, pProcess->iInitialBurstTime);
+        sem_post(&buffer[pProcess->iPriority].bufferSync);
         i++;
     }
     
